@@ -4,7 +4,7 @@ import sys
 import copy, random
 import matplotlib.pyplot as plt
 import cv2
-
+np.random.seed(sum([ord(c) for c in 'kishandh@buffalo']))
 def euclidian_distance(p1, p2, brg=False):
     if brg:
         return math.sqrt((p2[0]-p1[0])**2 + (p2[1]-p1[1])**2 + (p2[2]-p1[2])**2)
@@ -118,6 +118,7 @@ centers=[(6.2, 3.2), (6.6, 3.7), (6.5, 3.0)]
 
 x=[(5.9, 3.2), (4.6, 2.9), (6.2, 2.8), (4.7, 3.2), (5.5, 4.2), (5.0, 3.0),
    (4.9, 3.1), (6.7, 3.1), (5.1, 3.8), (6.0, 3.0)]
+
 find_and_plot_kmeans(x, centers, 3)
 
 k_all = [3, 5, 10, 20]
@@ -125,7 +126,7 @@ for k in k_all:
     org_baboon=cv2.imread('baboon.jpg')
     centers=[]
     for i in range(k):
-        centers.append(org_baboon[random.randint(1, 512)][random.randint(1, 512)])
+        centers.append(org_baboon[np.random.randint(1, 512)][np.random.randint(1, 512)])
 
     ca=find_and_plot_kmeans2(org_baboon, centers, k)
 

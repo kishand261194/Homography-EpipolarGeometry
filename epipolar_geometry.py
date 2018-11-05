@@ -1,26 +1,23 @@
 import numpy as np
 import cv2
 import random
+from matplotlib import pyplot as plt
 imgs=[]
 imgs_grey=[]
 imgs_kp=[]
 imgs_res=[]
-
+np.random.seed(sum([ord(c) for c in 'kishandh']))
+colors=[tuple(np.random.randint(0,255,3).tolist()) for i in range(10)]
 def drawlines(img1,img2,lines,pts1,pts2):
     r,c,_ = img1.shape
-    #img1 = cv2.cvtColor(img1,cv2.COLOR_GRAY2BGR)
-    #img2 = cv2.cvtColor(img2,cv2.COLOR_GRAY2BGR)
-    for r,pt1,pt2 in zip(lines,pts1,pts2):
-        color = tuple(np.random.randint(0,255,3).tolist())
+    for i,(r,pt1,pt2) in enumerate(zip(lines,pts1,pts2)):
+        color = colors[i]
         x0,y0 = map(int, [0, -r[2]/r[1] ])
         x1,y1 = map(int, [c, -(r[2]+r[0]*c)/r[1] ])
         img1 = cv2.line(img1, (x0,y0), (x1,y1), color,1)
-        print(pt1)
-        print(pt2)
         img1 = cv2.circle(img1,tuple(pt1.flatten()),5,color,-1)
         img2 = cv2.circle(img2,tuple(pt2.flatten()),5,color,-1)
     return img1,img2
-
 filename=['tsucuba_left.png', 'tsucuba_right.png']
 for i in range(1,3):
     img=cv2.imread(filename[i-1])
@@ -43,60 +40,32 @@ for m,n in matches:
     if m.distance < 0.75*n.distance:
         best.append([m])
         good.append(m)
-good=random.sample(good, 10)
+
 res_msift=cv2.drawMatchesKnn(imgs[0],imgs_kp[0],imgs[1],imgs_kp[1], best, None,flags=2)
 cv2.imwrite('task2_matches_knn.jpg', res_msift)
-img_right = np.int32([ imgs_kp[1][m.trainIdx].pt for m in good ])#.reshape(-1,1,2)
-img_left = np.int32([ imgs_kp[0][m.queryIdx].pt for m in good ])#.reshape(-1,1,2)
-F, mask = cv2.findFundamentalMat(img_left, img_right, cv2.FM_LMEDS)
+img_left = np.int32([ imgs_kp[0][m.queryIdx].pt for m in good ]).reshape(-1,1,2)
+img_right = np.int32([ imgs_kp[1][m.trainIdx].pt for m in good ]).reshape(-1,1,2)
+F, mask = cv2.findFundamentalMat(img_left, img_right, cv2.FM_RANSAC)
 print(F)
 
-# We select only inlier points
+rand_indx=[np.random.randint(0,len(mask)-1) for i in range(10)]
 img_left = img_left[mask.ravel()==1]
+img_left=np.array([img_left[i] for i in rand_indx])
 img_right = img_right[mask.ravel()==1]
-# #print(img_left, img_right)
-# #print(len(img_left))
-# #print(len(img_right))
-# #img_left_indx=np.random.choice(len(img_left), 10)
-# #img_right_indx=np.random.choice(len(img_right), 10)
-# #img_left=img_left[img_left_indx]
-# #img_right_indx=img_right[img_right_indx]
-# lines_left = cv2.computeCorrespondEpilines(img_right,2,F)
-# lines_left = lines_left.reshape(-1,3)#[:10]
-# r,c,_ = imgs[0].shape
-# for r,pt1,pt2 in zip(lines_left,img_left,img_right):
-#     color = tuple(np.random.randint(0,255,3).tolist())
-#     x0,y0 = map(int, [0, -r[2]/r[1] ])
-#     x1,y1 = map(int, [c, -(r[2]+r[0]*c)/r[1] ])
-#     imgs[0] = cv2.line(imgs[0], (x0,y0), (x1,y1), color,1)
-#     imgs[0] = cv2.circle(imgs[0],tuple(pt1.flatten()),5,color,-1)
-#     imgs[0] = cv2.circle(imgs[0],tuple(pt2.flatten()),5,color,-1)
-# cv2.imwrite('task2_epi_left.jpg', imgs[0])
-#
-# lines_right = cv2.computeCorrespondEpilines(img_left,2,F)
-# lines_right = lines_right.reshape(-1,3)#[:10]
-# r,c,_ = imgs[1].shape
-# for r,pt1,pt2 in zip(lines_right,img_right,img_left):
-#     color = tuple(np.random.randint(0,255,3).tolist())
-#     x0,y0 = map(int, [0, -r[2]/r[1] ])
-#     x1,y1 = map(int, [c, -(r[2]+r[0]*c)/r[1] ])
-#     imgs[1] = cv2.line(imgs[1], (x0,y0), (x1,y1), color,1)
-#     imgs[1] = cv2.circle(imgs[1],tuple(pt1.flatten()),5,color,-1)
-#     imgs[1] = cv2.circle(imgs[1],tuple(pt2.flatten()),5,color,-1)
-# cv2.imwrite('task2_epi_right.jpg', imgs[1])
-# Find epilines corresponding to points in right image (second image) and
-# drawing its lines on left image
+img_right=np.array([img_right[i] for i in rand_indx])
 lines1 = cv2.computeCorrespondEpilines(img_right, 2,F)
 lines1 = lines1.reshape(-1,3)
 img5,img6 = drawlines(imgs[0],imgs[1],lines1,img_left,img_right)
 
-# Find epilines corresponding to points in left image (first image) and
-# drawing its lines on right image
 lines2 = cv2.computeCorrespondEpilines(img_left, 1,F)
 lines2 = lines2.reshape(-1,3)
 img3,img4 = drawlines(imgs[1],imgs[0],lines2,img_right,img_left)
-#plt.subplot(121),plt.imshow(img5)
+
 cv2.imwrite('task2_epi_left.jpg', img5)
-#plt.subplot(122),plt.imshow(img3)
 cv2.imwrite('task2_epi_right.jpg', img3)
-#plt.show()
+
+stereo = cv2.StereoBM_create(numDisparities=96, blockSize=31)
+disparity = stereo.compute(imgs_grey[0], imgs_grey[1])
+norm_image = cv2.normalize(disparity, None, alpha = 0, beta = 1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+plt.imshow(norm_image,'gray')
+plt.show()
